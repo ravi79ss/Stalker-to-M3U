@@ -86,11 +86,13 @@ function mac_handshake()
     if(empty($output['token']))
     {
         $rqlink = mac_serverurl()."?type=stb&action=handshake&token=&JsHttpRequest=1-xml";
+
         $rqheadz = array("User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
                          "X-User-Agent: Model: MAG250; Link: WiFi",
                          "Referer: ".mac_macurl(),
                          "Cookie: mac=".mac_macid()."; stb_lang=en; timezone=GMT");
         $fetch = getRequest($rqlink, $rqheadz);
+		
         $adata = @json_decode($fetch['data'], true);
         if(isset($adata['js']['token']) && !empty($adata['js']['token'])) { $token = $adata['js']['token']; }
         if(isset($adata['js']['random']) && !empty($adata['js']['random'])) { $random = $adata['js']['random']; }
@@ -111,7 +113,7 @@ function mac_getprofile($retry = true)
 {
     global $APP_CONFIG;
     $path_Profiledt = $APP_CONFIG['DATA_FOLDER']."/axMeta.enc";
-    $name = ""; $expiry = ""; $username = ""; $password = ""; $output = array();
+    $name = ""; $expiry = ""; $username = ""; $password = ""; $parent_password = ""; $output = array();
     $pfLoad = 'type=stb&action=get_profile&hd=1&ver='.urlencode('ImageDescription: 0.2.18-r14-pub-250; ImageDate: Fri Jan 15 15:20:44 EET 2016; PORTAL version: 5.1.0; API Version: JS API version: 328; STB API version: 134; Player Engine version: 0x566').'&num_banks=2&sn='.mac_serial().'&stb_type=MAG250&image_version=218&video_out=hdmi&device_id='.mac_device_1().'&device_id2='.mac_device_2().'&signature='.mac_signature().'&auth_second_step=1&hw_version=1.7-BD-00&not_valid_token=0&client_type=STB&hw_version_2=36da041e6358ee8f8801105e36a63474&timestamp='.time().'&api_signature=263&metrics={"mac":"'.mac_macid().'","sn":"'.mac_serial().'","model":"MAG250","type":"STB","uid":"","random":"'.mac_handshake()['random'].'"}&JsHttpRequest=1-xml';
     $pfAPI = mac_serverurl().'?'.$pfLoad;
     $pfHeadz = array("User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
@@ -128,15 +130,36 @@ function mac_getprofile($retry = true)
 
     if(isset($adata['js']['login']) && !empty($adata['js']['login'])) { $username = $adata['js']['login']; }
     if(isset($adata['js']['password']) && !empty($adata['js']['password'])) { $password = $adata['js']['password']; }
+	if(isset($adata['js']['parent_password']) && !empty($adata['js']['parent_password'])) { $parent_password = $adata['js']['parent_password']; }
+	
+	app_messagelogs("1. Expiry date is = $expiry");
+	
+	    if(($expiry) === "0000-00-00 00:00:00")
+	{
+		app_messagelogs("2. Expiry date is = $expiry");
+		$expiry = "";
+		$pfLoad = 'type=account_info&action=get_main_info&JsHttpRequest=1-xml';
+		$pfAPI = mac_serverurl().'?'.$pfLoad;
+		$pfHeadz = array("User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
+                      "X-User-Agent: Model: MAG250; Link: WiFi",
+                      "Referer: ".mac_macurl(),
+                      "Cookie: mac=".mac_macid()."; stb_lang=en; timezone=GMT",
+                      "Authorization: Bearer ".mac_handshake()['token']);
+		$fetch = getRequest($pfAPI, $pfHeadz);
+		$adata = @json_decode($fetch['data'], true);
+		if(isset($adata['js']['phone']) && !empty($adata['js']['phone'])) { $expiry = $adata['js']['phone']; }
+		app_messagelogs("3. Expiry date is = $expiry");
+		
+	}
     
-    if(!empty($name)) {
+    if(!empty($name) || !empty($password) || !empty($parent_password)) {
         $output = array("name" => $name, "expiry" => $expiry, "username" => $username, "password" => $password);
         @file_put_contents($path_Profiledt, json_encode($output, JSON_UNESCAPED_SLASHES));
     }
     else
     {
         if ($retry) {
-            sleep(1);
+            sleep(5);
             return mac_getprofile(false);
         }
         if($fetch['data'] !== strip_tags($fetch['data'])){ $fetch['data'] = strip_tags($fetch['data']); }
@@ -144,6 +167,55 @@ function mac_getprofile($retry = true)
     }
     return $output;
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 function app_macportalmeta($action)
 {
@@ -187,6 +259,10 @@ function mac_getGenres()
                     "Authorization: Bearer ".mac_handshake()['token']);
     
     $fetch = getRequest($apiURL, $headers);
+	//app_messagelogs("GetRequest function at inc.upstream.php genres");
+	//app_messagelogs($apiURL);
+	//app_messagelogs("Response: " . (is_array($fetch) ? json_encode($fetch) : $fetch));
+	//app_messagelogs("Response: " . (is_array($headers) ? json_encode($headers) : $headers));
     $adata = @json_decode($fetch['data'], true);
     
     if(isset($adata['js']) && is_array($adata['js'])) {
@@ -207,8 +283,9 @@ function mac_getGenres()
 // IMPORTANT: Yeh function portal se channels fetch karega with tv_genre_id
 function mac_fetchChannelsFromPortal()
 {
+
     global $APP_CONFIG;
-    
+
     $xvAPI = mac_serverurl()."?type=itv&action=get_all_channels&JsHttpRequest=1-xml";
     $xvHead = array("User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
                     "X-User-Agent: Model: MAG250; Link: WiFi",
@@ -217,6 +294,10 @@ function mac_fetchChannelsFromPortal()
                     "Authorization: Bearer ".mac_handshake()['token']);
     
     $fetch = getRequest($xvAPI, $xvHead);
+	//app_messagelogs("GetRequest function at inc.upstream.php");
+	//app_messagelogs($xvAPI);
+	//app_messagelogs("Response: " . (is_array($fetch) ? json_encode($fetch) : $fetch));
+	//app_messagelogs("Response: " . (is_array($xvHead) ? json_encode($xvHead) : $xvHead));
     return @json_decode($fetch['data'], true);
 }
 
@@ -315,7 +396,9 @@ function mac_getPlaybackLink($id)
     $cdetail = getChannelDetail($id);
     if(!empty($cdetail))
     {
+		app_messagelogs("GetRequest function for link cmd at inc.upstream.php");
         $mpbAPI = mac_serverurl()."?type=itv&action=create_link&cmd=".urlencode($cdetail['cmd'])."&JsHttpRequest=1-xml";
+		app_messagelogs($mpbAPI);
         $mpbHead = array("User-Agent: Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) MAG200 stbapp ver: 2 rev: 250 Safari/533.3",
                         "X-User-Agent: Model: MAG250; Link: WiFi",
                         "Referer: ".mac_macurl(),
@@ -323,9 +406,25 @@ function mac_getPlaybackLink($id)
                         "Authorization: Bearer ".mac_handshake()['token']);
         $fetch = getRequest($mpbAPI, $mpbHead);
         $adata = @json_decode($fetch['data'], true);
+		app_messagelogs("Response: " . (is_array($fetch) ? json_encode($fetch) : $fetch));
+		app_messagelogs("adata is ".json_encode($adata));
+		
+		if(!empty($adata['js']['id'])){app_messagelogs("case 1: stalker portal, id received from server, page : inc.upstream.php");}
+		if(empty($adata['js']['id']))
+		{
+			app_messagelogs("case 2 : normal portal, id not received from server, page : inc.upstream.php");
+			
+			app_messagelogs("id is" .$id);
+			$adata['js']['cmd'] = str_replace('stream=', 'stream=' . $id, $adata['js']['cmd']);
+			$adata['js']['cmd'] = str_replace('extension=ts', 'extension=m3u8', $adata['js']['cmd']);
+			app_messagelogs("new adata is ".json_encode($adata));
+		}
+		
         if(isset($adata['js']['cmd']) && !empty($adata['js']['cmd'])) {
             $output = sanitizemacurl($adata['js']['cmd']);
-            
+            //app_messagelogs("1. previous link is" .$output);
+			//$output = str_replace('stream=', 'stream=' . $id, $output);
+			//app_messagelogs("2. now link is" .$output);
             // Save to Cache if enabled
             if($output !== false && $cache_settings['status'] == "ON") {
                 // Re-read latest cache to ensure we don't overwrite other channels

@@ -284,12 +284,20 @@ else
             if(isset($_REQUEST['device_id1'])){ $device_id1 = trim(strip_tags($_REQUEST['device_id1'])); }
             if(isset($_REQUEST['device_id2'])){ $device_id2 = trim(strip_tags($_REQUEST['device_id2'])); }
             if(isset($_REQUEST['signature'])){ $signature = trim(strip_tags($_REQUEST['signature'])); }
+			
             if(empty($server_url)) {
                 response("error", 400, "Please enter MAC Server URL", "");
             }
             if(empty($mac_id)) {
                 response("error", 400, "Please enter MAC ID", "");
+
             }
+			
+			if(empty($serial)) {$serial = substr(strtoupper(md5($mac_id)), 0, 13);}
+			if($device_id1 == ""){$device_id1 = strtoupper(hash('sha256', $mac_id));}
+			if($device_id2 == ""){$device_id2 = strtoupper(hash('sha256', $mac_id));} 
+			
+			
             if (substr($server_url, -strlen('/c/')) !== '/c/') {
                 response("error", 400, "MAC Server URL should end with /c/", "");
             }

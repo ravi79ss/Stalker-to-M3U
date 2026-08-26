@@ -121,17 +121,28 @@ function ex_encdec($action, $data) {
 
 function getRequest($url, $headers)
 {
-    $process = curl_init($url);
+	app_messagelogs("GetRequest function at inc.config.php");
+	app_messagelogs($url);
+	set_time_limit(200);
+	ignore_user_abort(true);
+	$process = curl_init($url);
+        app_messagelogs(implode(";", $headers));
+    
     curl_setopt($process, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($process, CURLOPT_HEADER, 0);
-    curl_setopt($process, CURLOPT_TIMEOUT, 10);
+    curl_setopt($process, CURLOPT_TIMEOUT, 180);
     curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($process, CURLOPT_FOLLOWLOCATION, 1);
     $return = curl_exec($process);
     $effURL = curl_getinfo($process, CURLINFO_EFFECTIVE_URL);
     $httpcode = curl_getinfo($process, CURLINFO_HTTP_CODE);
     curl_close($process);
-    return array("url" => $effURL, "code" => $httpcode, "data" => $return);
+	
+	//sleep(10); 
+	app_messagelogs("Query URL: $url");
+	app_messagelogs("Http Code received: $httpcode");
+	app_messagelogs("Received Data: $return");
+	return array("url" => $effURL, "code" => $httpcode, "data" => $return);
 }
 
 function streamRequest($url, $headers)
@@ -157,12 +168,13 @@ function streamRequest($url, $headers)
 
 function postRequest($url, $headers, $payload)
 {
+	set_time_limit(800);
     $process = curl_init($url);
     curl_setopt($process, CURLOPT_POST, 1);
     curl_setopt($process, CURLOPT_POSTFIELDS, $payload);
     curl_setopt($process, CURLOPT_HTTPHEADER, $headers);
     curl_setopt($process, CURLOPT_HEADER, 0);
-    curl_setopt($process, CURLOPT_TIMEOUT, 10);
+    curl_setopt($process, CURLOPT_TIMEOUT, 750);
     curl_setopt($process, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($process, CURLOPT_FOLLOWLOCATION, 1);
     $return = curl_exec($process);
@@ -173,6 +185,14 @@ function postRequest($url, $headers, $payload)
 }
 
 //===================================================================//
+function app_messagelogs($message)
+{
+	if(app_logging("get") == "OFF") { return true; }
+    global $APP_CONFIG;
+    $path_actionlogs = $APP_CONFIG['DATA_FOLDER']."/axLogs.enc";
+    $log_msg = date('F d, Y h:i:s A')." || ".$message." \n";
+    if(file_put_contents($path_actionlogs, $log_msg, FILE_APPEND)){ return true; }else{ return false; }
+}	
 
 function app_recordalogs($status, $message)
 {

@@ -56,10 +56,18 @@ if(isset($livetv[0]))
                 $tvg_id = str_replace('ffrt http://localhost/ch/', '', $itv['cmd']);
                 $tvg_id = trim($tvg_id);
             }
+	
             
             $tvg_logo = fixlogoissue($itv['logo']);
-            $stream_url = $streamenvproto."://".$plhoth.str_replace(" ", "%20", str_replace(basename($_SERVER['PHP_SELF']), '', $_SERVER['PHP_SELF']))."live.m3u8?id=".$itv['id'];
             
+            			
+			if(strpos($itv['cmd'], 'localhost') == false) {
+				$stream_url = str_replace('ffmpeg http://', 'http://', $itv['cmd']);
+				$stream_url = trim($stream_url);
+			}
+			else{
+	$stream_url = $streamenvproto."://".$plhoth.str_replace(" ", "%20", str_replace(basename($_SERVER['PHP_SELF']), '', $_SERVER['PHP_SELF']))."live.m3u8?id=".$itv['id'];
+			}
             $icdata .= '#EXTINF:-1 tvg-id="'.$tvg_id.'" tvg-name="'.$itv['title'].'" tvg-logo="'.$tvg_logo.'" group-title="'.$cat_title.'",'.$itv['title']."\n";
             $icdata .= $stream_url."\n";
         }
