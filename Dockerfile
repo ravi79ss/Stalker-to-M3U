@@ -5,4 +5,4 @@ FROM php:8.2-apache
 COPY . /var/www/html/
 
 # Expose port 80 to allow web traffic
-EXPOSE 80
+#EXPOSE 80
