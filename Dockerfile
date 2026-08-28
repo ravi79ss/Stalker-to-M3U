@@ -1,13 +1,14 @@
-FROM php:8.2-cli
+FROM php:8.2-apache
 
-# 1. Set the container working directory
-WORKDIR /var/www/html
+# 1. Properly rewrite Apache ports in both available and enabled site configurations
+RUN sed -i 's/Listen 80/Listen 10000/g' /etc/apache2/ports.conf
+RUN sed -i 's/<VirtualHost \*:80>/<VirtualHost \*:10000>/g' /etc/apache2/sites-available/*.conf
 
-# 2. Copy your PHP files into the container
+# 2. Copy your PHP files into the server directory
 COPY . /var/www/html/
 
-# 3. Expose the port (Render will map this using your environment variable)
-EXPOSE 10000
+# 3. Secure file permissions for Apache web user
+RUN chown -R www-data:www-data /var/www/html
 
-# 4. Start PHP's built-in web server dynamically on the required port
-CMD ["sh", "-c", "php -S 0.0.0.0:$PORT"]
+# 4. Open up port 10000
+EXPOSE 10000
